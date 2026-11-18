@@ -23,7 +23,7 @@ const activated=activations[active],pooled=pooledMaps[active],pn=pooled.length;p
 $('input-shape').textContent=`${N+2*p} × ${N+2*p}`;$('conv-shape').textContent=$('relu-shape').textContent=`${n} × ${n}`;$('position').textContent=`核 ${active+1} · 位置 (${r+1}, ${c+1}) · ${cursor+1} / ${n*n}`;$('previous').disabled=cursor===0;$('next').disabled=cursor===n*n-1;$('scrubber').max=n*n-1;$('scrubber').value=cursor;$('scan-progress').max=n*n;$('scan-progress').value=cursor+1;
 const mode=$('pool-type').value,values=[activated[2*pr][2*pc],activated[2*pr][2*pc+1],activated[2*pr+1][2*pc],activated[2*pr+1][2*pc+1]];$('pool-title').textContent=mode==='max'?'最大池化':'平均池化';$('pool-shape').textContent=`完整结果 · ${pn} × ${pn}`;$('pool-detail').textContent=`橙框中的四个值 ${values.map(fmt).join('、')}，${mode==='max'?'取最大值':'求平均值'} → ${fmt(pooled[pr][pc])}。`;$('size-note').textContent=`输出边长 = ⌊(N + 2P − K) / S⌋ + 1 = ⌊(${N} + 2×${p} − ${k}) / ${s}⌋ + 1 = ${n}。卷积采用不翻转核的互相关，膨胀率为 1。`;
 $('layer-summary').textContent=`输入 ${N} × ${N} × 1 → ${filters.length} 个 ${k} × ${k} × 1 卷积核 → 输出 ${n} × ${n} × ${filters.length}。参数量 (${k}² × 1 + 1) × ${filters.length} = ${(k*k+1)*filters.length}（含每核一个偏置）。`;
-renderBank(max);network.update({input,maps,activations,pooledMaps,cursor,k,s,p,active});
+renderBank(max);network.update({input,maps,activations,pooledMaps,cursor,k,s,p,active,filters,poolMode:mode});
 }
 function renderBank(max){$('feature-bank').innerHTML='';maps.forEach((m,i)=>{const button=document.createElement('button');button.className='feature-card'+(i===active?' active':'');button.onclick=()=>selectFilter(i);const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const ctx=canvas.getContext('2d'),d=128/m.length;m.forEach((row,r)=>row.forEach((v,c)=>{const a=Math.min(1,Math.abs(v)/max);ctx.fillStyle=r*m.length+c>cursor?'#eef1ea':v<0?`rgb(${230-40*a},${210-120*a},${220-65*a})`:`rgb(${235-215*a},${243-110*a},${231-120*a})`;ctx.fillRect(c*d,r*d,d,d);}));const label=document.createElement('span');label.textContent=`通道 ${i+1} · ${names[filters[i].kind]}`;button.append(canvas,label);$('feature-bank').append(button);});}
 function play(){if(timer){stop();return;}if(cursor>=maps[0].length**2-1)cursor=0;$('play').textContent='Ⅱ 暂停扫描';render();timer=setInterval(()=>{if(cursor>=maps[0].length**2-1){stop();return;}cursor++;render();},Number($('speed').value));}
@@ -31,3 +31,17 @@ $('resolution').onchange=()=>{input=pad.sample(Number($('resolution').value));re
 document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b===button));$('task-note').textContent=button.dataset.mode==='classification'?'分类：把整张图映射到类别分数。下方 U 形结构展示下一步学习的分割网络。':'分割：每个空间位置都有类别分数。跳跃连接沿通道拼接同尺度特征，帮助解码器利用编码器的空间细节。';});
 Array.from({length:64},(_,i)=>{const cell=document.createElement('span');if(Math.floor(i/8)===3||i%8===3)cell.className='on';$('hero-grid').append(cell);});document.querySelector('[data-mode]').click();input=pad.sample(Number($('resolution').value));resetFilters();renderSampling();recompute();
 document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();network.stop();}});
+
+// Link the 3D first layer to the exact filters edited in the drawing experiment.
+$('net-use-drawing').onclick = () => {
+  network.stop();
+  network.linked = true;
+  $('net-input').value = 'gray';
+  render();
+  network.select(1);
+  location.hash = '#network';
+};
+$('net-return-scan').onclick = () => {
+  selectFilter(Number($('net-channel').value));
+  location.hash = '#lab';
+};

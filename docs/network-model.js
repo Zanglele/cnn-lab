@@ -5,12 +5,12 @@ function build(gray,config){
  const layers=[{name:config.input==='rgb'?'RGB 输入':'灰度输入',n,channels:data.length,data,rgb:config.input==='rgb',parameters:0,detail:config.input==='rgb'?'三片是同一幅彩色示例的 R、G、B 数值平面。R 随左右变化，G 随上下变化，B 固定为 0.25；不是三张独立图片。':'手绘采样得到一个灰度通道，黑色墨迹为 1、白底为 0。不是 RGB 三通道。'}];
  let total=0;
  for(let i=0;i<config.blocks.length;i++){
-  const b=config.blocks[i],cin=data.length,side=data[0].length,p=b.padding==='same'?Math.floor(b.k/2):0;
+  const b=config.blocks[i],cin=data.length,side=data[0].length,p=b.padding==='same'?Math.floor(b.k/2):b.padding==='valid'?0:Number(b.padding);
   const out=Math.floor((side+2*p-b.k)/b.stride)+1;
   if(out<1)return {layers,total,error:`卷积 ${i+1} 无有效输出：输入 ${side}，核 ${b.k}，补零 ${p}。请减小核、开启补零或减少之前的下采样。`};
   const previous=data;
   data=Array.from({length:b.channels},(_,o)=>{
-   const parts=previous.map((plane,c)=>{const kind=['vertical','horizontal','blur','identity'][o%4];const kernel=math.makeKernel(kind,b.k).map(row=>row.map(v=>v*(c+1)/(cin*(cin+1)/2)));return math.convolve(plane,kernel,b.stride,p,0);});
+   const parts=previous.map((plane,c)=>{const kind=['vertical','horizontal','blur','identity'][o%4];const imported=i===0&&config.firstFilters?.[o];const kernel=imported?imported.weights:math.makeKernel(kind,b.k).map(row=>row.map(v=>v*(c+1)/(cin*(cin+1)/2)));return math.convolve(plane,kernel,b.stride,p,imported?.bias??0);});
    return parts[0].map((row,r)=>row.map((_,col)=>parts.reduce((sum,m)=>sum+m[r][col],0)));
   });
   const params=(b.k*b.k*cin+1)*b.channels;total+=params;

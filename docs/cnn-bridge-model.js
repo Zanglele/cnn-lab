@@ -5,7 +5,7 @@
  const vertical=[[-.5,.5],[-.5,.5]],horizontal=[[-.5,-.5],[.5,.5]];
  const kernels=[vertical,horizontal];
  function setExample(kind='vertical',position=2,direction='vertical'){
-   input.splice(0,4,...Array.from({length:4},(_,r)=>Array.from({length:4},(_,c)=>kind==='uniform'?1:kind==='horizontal'?Number(r>=position):kind==='reverse'?Number(c<position):Number(c>=position))));
+   input.splice(0,4,...Array.from({length:4},(_,r)=>Array.from({length:4},(_,c)=>kind==='uniform'?0:kind==='horizontal'?Number(r>=position):kind==='reverse'?Number(c<position):Number(c>=position))));
    kernels.splice(0,2,...(direction==='vertical'?[vertical,horizontal]:[horizontal,vertical]));
  }
  function rgbExample(greenWeight=0){
